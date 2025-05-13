@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,43 +10,82 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { Phone, Mail, MapPin, ArrowLeft } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-
-// Sample adviser data
-const adviserData = {
-  id: 1,
-  name: 'Rajesh Kumar',
-  email: 'rajesh.kumar@example.com',
-  phone: '+91 9876543210',
-  address: '42, Park Street, Bangalore - 560001',
-  status: 'active',
-  region: 'North',
-  joiningDate: 'January 12, 2022',
-  manager: 'Sripal Reddy',
-  targetAchievement: 80,
-  initials: 'RK',
-  policies: [
-    { id: 'POL-2024-001', customer: 'Arun Sharma', type: 'Health', premium: 12000, date: '15 Jan 2024' },
-    { id: 'POL-2024-005', customer: 'Rahul Verma', type: 'Health', premium: 15000, date: '15 Feb 2024' },
-    { id: 'POL-2024-010', customer: 'Divya Mehta', type: 'Life', premium: 28000, date: '5 Mar 2024' },
-    { id: 'POL-2024-015', customer: 'Vikash Singh', type: 'Motor', premium: 7500, date: '22 Mar 2024' },
-  ],
-  performance: [
-    { month: 'Jan', policies: 6, target: 8 },
-    { month: 'Feb', policies: 5, target: 8 },
-    { month: 'Mar', policies: 9, target: 8 },
-    { month: 'Apr', policies: 7, target: 8 },
-    { month: 'May', policies: 8, target: 8 },
-    { month: 'Jun', policies: 10, target: 8 },
-  ]
-};
+import { useData, Adviser, Policy } from '@/context/DataContext';
+import { toast } from '@/components/ui/use-toast';
 
 const AdviserDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { advisers, policies } = useData();
   
-  // In a real app, we'd fetch the adviser data based on the ID
-  const adviser = adviserData;
+  // Find the adviser by ID
+  const adviser = useMemo(() => {
+    return advisers.find(a => a.id === Number(id));
+  }, [advisers, id]);
+
+  // Get policies for this adviser
+  const adviserPolicies = useMemo(() => {
+    return policies.filter(policy => policy.adviserId === Number(id));
+  }, [policies, id]);
+
+  // Generate performance data (last 6 months)
+  const performanceData = useMemo(() => {
+    if (!adviserPolicies.length) return [];
+    
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const currentDate = new Date();
+    const lastSixMonths = Array(6).fill(0).map((_, i) => {
+      const month = new Date(currentDate);
+      month.setMonth(currentDate.getMonth() - i);
+      return {
+        date: month,
+        month: months[month.getMonth()],
+        year: month.getFullYear(),
+      };
+    }).reverse();
+    
+    return lastSixMonths.map(monthData => {
+      const monthPolicies = adviserPolicies.filter(policy => {
+        const policyDate = new Date(policy.startDate);
+        return policyDate.getMonth() === monthData.date.getMonth() && 
+               policyDate.getFullYear() === monthData.date.getFullYear();
+      });
+      
+      return {
+        month: monthData.month,
+        policies: monthPolicies.length,
+        target: 4, // Example target
+      };
+    });
+  }, [adviserPolicies]);
   
+  // Calculate stats
+  const totalPolicies = adviserPolicies.length;
+  const currentMonthPolicies = adviserPolicies.filter(policy => {
+    const policyDate = new Date(policy.startDate);
+    const currentDate = new Date();
+    return policyDate.getMonth() === currentDate.getMonth() &&
+           policyDate.getFullYear() === currentDate.getFullYear();
+  }).length;
+  
+  const totalPremium = adviserPolicies.reduce((sum, policy) => sum + policy.premium, 0);
+  const targetAchievement = totalPolicies > 0 ? Math.min(Math.round((totalPolicies / 20) * 100), 100) : 0;
+  
+  // If adviser not found
+  if (!adviser) {
+    return (
+      <Layout title="Adviser Not Found">
+        <div className="flex flex-col items-center justify-center py-12">
+          <h2 className="text-xl font-medium mb-2">Adviser not found</h2>
+          <p className="mb-6 text-muted-foreground">The adviser you're looking for doesn't exist.</p>
+          <Button onClick={() => navigate('/advisers')}>
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Advisers
+          </Button>
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout title="Adviser Details">
       <div className="space-y-6">
@@ -81,8 +120,27 @@ const AdviserDetail = () => {
                     <p className="text-muted-foreground">{adviser.region} Region</p>
                   </div>
                   <div className="flex gap-2">
-                    <Button variant="outline">Edit Profile</Button>
-                    <Button>Contact</Button>
+                    <Button 
+                      variant="outline"
+                      onClick={() => {
+                        navigate(`/edit-adviser/${adviser.id}`);
+                        toast({
+                          title: "Feature coming soon",
+                          description: "The edit adviser functionality is under development.",
+                        });
+                      }}
+                    >
+                      Edit Profile
+                    </Button>
+                    <Button onClick={() => {
+                      navigator.clipboard.writeText(adviser.email);
+                      toast({
+                        title: "Email copied",
+                        description: "Email address copied to clipboard.",
+                      });
+                    }}>
+                      Contact
+                    </Button>
                   </div>
                 </div>
                 
@@ -95,26 +153,26 @@ const AdviserDetail = () => {
                     <Mail className="h-4 w-4 mr-2 text-muted-foreground" />
                     <span>{adviser.email}</span>
                   </div>
-                  <div className="flex items-center">
-                    <MapPin className="h-4 w-4 mr-2 text-muted-foreground" />
-                    <span>{adviser.address}</span>
-                  </div>
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
                   <div>
                     <p className="text-sm text-muted-foreground">Joining Date</p>
-                    <p className="font-medium">{adviser.joiningDate}</p>
+                    <p className="font-medium">{new Date(adviser.joiningDate).toLocaleDateString('en-US', { 
+                      year: 'numeric', 
+                      month: 'long', 
+                      day: 'numeric' 
+                    })}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Reporting Manager</p>
-                    <p className="font-medium">{adviser.manager}</p>
+                    <p className="text-sm text-muted-foreground">Region Manager</p>
+                    <p className="font-medium">{adviser.region} Manager</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Target Achievement</p>
                     <div className="flex items-center mt-1">
-                      <Progress value={adviser.targetAchievement} className="h-2 flex-1 mr-2" />
-                      <span className="font-medium">{adviser.targetAchievement}%</span>
+                      <Progress value={targetAchievement} className="h-2 flex-1 mr-2" />
+                      <span className="font-medium">{targetAchievement}%</span>
                     </div>
                   </div>
                 </div>
@@ -138,7 +196,7 @@ const AdviserDetail = () => {
               <CardContent>
                 <div className="h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={adviser.performance}>
+                    <BarChart data={performanceData}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} />
                       <XAxis dataKey="month" />
                       <YAxis />
@@ -155,19 +213,19 @@ const AdviserDetail = () => {
               <Card>
                 <CardContent className="p-4 text-center">
                   <h3 className="text-muted-foreground text-sm mb-1">Total Policies</h3>
-                  <p className="text-3xl font-bold">45</p>
+                  <p className="text-3xl font-bold">{totalPolicies}</p>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="p-4 text-center">
                   <h3 className="text-muted-foreground text-sm mb-1">This Month</h3>
-                  <p className="text-3xl font-bold">10</p>
+                  <p className="text-3xl font-bold">{currentMonthPolicies}</p>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="p-4 text-center">
                   <h3 className="text-muted-foreground text-sm mb-1">Premium Generated</h3>
-                  <p className="text-3xl font-bold">₹12.5L</p>
+                  <p className="text-3xl font-bold">₹{(totalPremium / 100000).toFixed(1)}L</p>
                 </CardContent>
               </Card>
             </div>
@@ -179,30 +237,36 @@ const AdviserDetail = () => {
                 <CardTitle>Recent Policies</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="text-left py-2 px-4 font-medium">Policy ID</th>
-                        <th className="text-left py-2 px-4 font-medium">Customer</th>
-                        <th className="text-left py-2 px-4 font-medium">Type</th>
-                        <th className="text-left py-2 px-4 font-medium">Premium</th>
-                        <th className="text-left py-2 px-4 font-medium">Date</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {adviser.policies.map((policy) => (
-                        <tr key={policy.id} className="border-b hover:bg-muted/50 cursor-pointer">
-                          <td className="py-2 px-4">{policy.id}</td>
-                          <td className="py-2 px-4">{policy.customer}</td>
-                          <td className="py-2 px-4">{policy.type}</td>
-                          <td className="py-2 px-4">₹{policy.premium.toLocaleString()}</td>
-                          <td className="py-2 px-4">{policy.date}</td>
+                {adviserPolicies.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left py-2 px-4 font-medium">Policy ID</th>
+                          <th className="text-left py-2 px-4 font-medium">Customer</th>
+                          <th className="text-left py-2 px-4 font-medium">Type</th>
+                          <th className="text-left py-2 px-4 font-medium">Premium</th>
+                          <th className="text-left py-2 px-4 font-medium">Date</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {adviserPolicies.map((policy) => (
+                          <tr key={policy.id} className="border-b hover:bg-muted/50 cursor-pointer">
+                            <td className="py-2 px-4">{policy.id}</td>
+                            <td className="py-2 px-4">{policy.customerName}</td>
+                            <td className="py-2 px-4">{policy.policyType}</td>
+                            <td className="py-2 px-4">₹{policy.premium.toLocaleString()}</td>
+                            <td className="py-2 px-4">{new Date(policy.startDate).toLocaleDateString()}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-center py-10">
+                    <p className="text-muted-foreground">No policies found for this adviser.</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
