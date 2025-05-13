@@ -2,7 +2,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { X, BarChart, Users, FileText } from 'lucide-react';
+import { X, BarChart, Users, FileText, Plus, UserPlus, FilePlus } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 type SidebarProps = {
@@ -57,21 +57,6 @@ export const Sidebar = ({ onClose }: SidebarProps) => {
           </li>
           <li>
             <NavLink 
-              to="/performance" 
-              className={({ isActive }) => 
-                `flex items-center p-2 rounded-md transition-colors ${
-                  isActive 
-                    ? 'bg-sidebar-accent text-sidebar-foreground' 
-                    : 'hover:bg-sidebar-accent/50'
-                }`
-              }
-            >
-              <BarChart className="mr-3 h-5 w-5" />
-              Performance
-            </NavLink>
-          </li>
-          <li>
-            <NavLink 
               to="/policies" 
               className={({ isActive }) => 
                 `flex items-center p-2 rounded-md transition-colors ${
@@ -83,6 +68,36 @@ export const Sidebar = ({ onClose }: SidebarProps) => {
             >
               <FileText className="mr-3 h-5 w-5" />
               Policies
+            </NavLink>
+          </li>
+          <li className="pt-4 border-t border-sidebar-border/30">
+            <NavLink 
+              to="/add-adviser" 
+              className={({ isActive }) => 
+                `flex items-center p-2 rounded-md transition-colors ${
+                  isActive 
+                    ? 'bg-sidebar-accent text-sidebar-foreground' 
+                    : 'hover:bg-sidebar-accent/50'
+                }`
+              }
+            >
+              <UserPlus className="mr-3 h-5 w-5" />
+              Add Adviser
+            </NavLink>
+          </li>
+          <li>
+            <NavLink 
+              to="/add-policy" 
+              className={({ isActive }) => 
+                `flex items-center p-2 rounded-md transition-colors ${
+                  isActive 
+                    ? 'bg-sidebar-accent text-sidebar-foreground' 
+                    : 'hover:bg-sidebar-accent/50'
+                }`
+              }
+            >
+              <FilePlus className="mr-3 h-5 w-5" />
+              Add Policy
             </NavLink>
           </li>
         </ul>

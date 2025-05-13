@@ -1,30 +1,67 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { BarChart as BarChartIcon, Users, FileText } from 'lucide-react';
+import { BarChart as BarChartIcon, Users, FileText, Calendar } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { useNavigate } from 'react-router-dom';
-
-// Sample data for demo purposes
-const performanceData = [
-  { name: 'Jan', value: 65 },
-  { name: 'Feb', value: 72 },
-  { name: 'Mar', value: 68 },
-  { name: 'Apr', value: 84 },
-  { name: 'May', value: 90 },
-  { name: 'Jun', value: 85 },
-];
-
-const topAdvisers = [
-  { id: 1, name: 'Rajesh Kumar', policies: 24, target: 30 },
-  { id: 2, name: 'Priya Singh', policies: 22, target: 25 },
-  { id: 3, name: 'Amit Patel', policies: 19, target: 20 },
-];
+import { useData } from '@/context/DataContext';
 
 const Index = () => {
   const navigate = useNavigate();
+  const { advisers, policies } = useData();
+  const [performanceData, setPerformanceData] = React.useState<any[]>([]);
+  const [topAdvisers, setTopAdvisers] = React.useState<any[]>([]);
+  
+  useEffect(() => {
+    // Generate monthly performance data
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const currentMonth = new Date().getMonth();
+    const last6Months = Array.from({ length: 6 }, (_, i) => {
+      const month = (currentMonth - i + 12) % 12;
+      return {
+        name: monthNames[month],
+        value: Math.floor(Math.random() * 30) + 60 // Random value between 60-90 for demo
+      };
+    }).reverse();
+    
+    setPerformanceData(last6Months);
+    
+    // Calculate top advisers
+    const adviserPolicyCounts: Record<number, { id: number, name: string, policies: number, target: number }> = {};
+    
+    policies.forEach(policy => {
+      if (!adviserPolicyCounts[policy.adviserId]) {
+        const adviser = advisers.find(a => a.id === policy.adviserId);
+        if (adviser) {
+          adviserPolicyCounts[policy.adviserId] = {
+            id: adviser.id,
+            name: adviser.name,
+            policies: 0,
+            target: Math.floor(Math.random() * 10) + 20 // Random target between 20-30 for demo
+          };
+        }
+      }
+      
+      if (adviserPolicyCounts[policy.adviserId]) {
+        adviserPolicyCounts[policy.adviserId].policies += 1;
+      }
+    });
+    
+    const topAdvisersList = Object.values(adviserPolicyCounts)
+      .sort((a, b) => b.policies - a.policies)
+      .slice(0, 3);
+    
+    setTopAdvisers(topAdvisersList);
+  }, [advisers, policies]);
+  
+  // Calculate total active policies
+  const activePolicies = policies.filter(p => p.status === 'active').length;
+  
+  // Calculate quarterly target (for demo purposes, assuming a target of 30 policies per quarter)
+  const quarterlyTarget = 30;
+  const quarterlyProgress = Math.min(Math.round((activePolicies / quarterlyTarget) * 100), 100);
   
   return (
     <Layout title="Dashboard">
@@ -39,8 +76,10 @@ const Index = () => {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">42</div>
-              <p className="text-xs text-muted-foreground mt-1">12 new this quarter</p>
+              <div className="text-2xl font-bold">{advisers.length}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {advisers.filter(a => a.status === 'active').length} active advisers
+              </p>
             </CardContent>
           </Card>
           <Card className="shadow-sm animate-enter" style={{ animationDelay: "0.1s" }}>
@@ -51,8 +90,10 @@ const Index = () => {
               <FileText className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">318</div>
-              <p className="text-xs text-muted-foreground mt-1">↑ 24 from last month</p>
+              <div className="text-2xl font-bold">{activePolicies}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                ₹{policies.reduce((sum, policy) => sum + policy.premium, 0).toLocaleString()} total premium
+              </p>
             </CardContent>
           </Card>
           <Card className="shadow-sm animate-enter" style={{ animationDelay: "0.2s" }}>
@@ -63,8 +104,8 @@ const Index = () => {
               <BarChartIcon className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">78%</div>
-              <Progress value={78} className="mt-2" />
+              <div className="text-2xl font-bold">{quarterlyProgress}%</div>
+              <Progress value={quarterlyProgress} className="mt-2" />
             </CardContent>
           </Card>
         </div>
@@ -116,6 +157,12 @@ const Index = () => {
                   />
                 </div>
               ))}
+              
+              {topAdvisers.length === 0 && (
+                <div className="text-center py-4">
+                  <p className="text-muted-foreground">No adviser data available.</p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

@@ -6,77 +6,32 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Phone, Mail, Search } from 'lucide-react';
+import { Phone, Mail, Search, UserPlus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-
-// Sample advisers data
-const advisersData = [
-  { 
-    id: 1, 
-    name: 'Rajesh Kumar', 
-    email: 'rajesh.kumar@example.com', 
-    phone: '+91 9876543210', 
-    status: 'active',
-    region: 'North',
-    policiesCount: 24,
-    targetAchievement: 80,
-    initials: 'RK'
-  },
-  { 
-    id: 2, 
-    name: 'Priya Singh', 
-    email: 'priya.singh@example.com', 
-    phone: '+91 9876543211', 
-    status: 'active',
-    region: 'South',
-    policiesCount: 22,
-    targetAchievement: 88,
-    initials: 'PS'
-  },
-  { 
-    id: 3, 
-    name: 'Amit Patel', 
-    email: 'amit.patel@example.com', 
-    phone: '+91 9876543212', 
-    status: 'active',
-    region: 'West',
-    policiesCount: 19,
-    targetAchievement: 95,
-    initials: 'AP'
-  },
-  { 
-    id: 4, 
-    name: 'Sneha Reddy', 
-    email: 'sneha.reddy@example.com', 
-    phone: '+91 9876543213', 
-    status: 'inactive',
-    region: 'South',
-    policiesCount: 16,
-    targetAchievement: 64,
-    initials: 'SR'
-  },
-  { 
-    id: 5, 
-    name: 'Vikram Mehta', 
-    email: 'vikram.mehta@example.com', 
-    phone: '+91 9876543214', 
-    status: 'active',
-    region: 'East',
-    policiesCount: 14,
-    targetAchievement: 70,
-    initials: 'VM'
-  },
-];
+import { useData, Adviser } from '@/context/DataContext';
+import { toast } from '@/components/ui/use-toast';
 
 const Advisers = () => {
   const [searchTerm, setSearchTerm] = React.useState('');
   const navigate = useNavigate();
+  const { advisers, deleteAdviser } = useData();
   
-  const filteredAdvisers = advisersData.filter(adviser => 
+  const filteredAdvisers = advisers.filter(adviser => 
     adviser.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     adviser.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
     adviser.region.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleDeleteAdviser = (adviser: Adviser, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (window.confirm(`Are you sure you want to delete ${adviser.name}?`)) {
+      deleteAdviser(adviser.id);
+      toast({
+        title: "Adviser deleted",
+        description: `${adviser.name} has been deleted successfully.`,
+      });
+    }
+  };
 
   return (
     <Layout title="Advisers Directory">
@@ -91,7 +46,10 @@ const Advisers = () => {
               className="pl-10"
             />
           </div>
-          <Button>Add New Adviser</Button>
+          <Button onClick={() => navigate('/add-adviser')}>
+            <UserPlus className="h-4 w-4 mr-2" />
+            Add New Adviser
+          </Button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -132,10 +90,19 @@ const Advisers = () => {
                       </div>
                     </div>
                     
-                    <div className="mt-3 pt-3 border-t">
-                      <div className="flex justify-between text-sm">
-                        <span>Policies: {adviser.policiesCount}</span>
-                        <span>Target: {adviser.targetAchievement}%</span>
+                    <div className="mt-3 pt-3 border-t flex justify-between items-center">
+                      <div className="text-sm">
+                        <span>Joined: {new Date(adviser.joiningDate).toLocaleDateString()}</span>
+                      </div>
+                      <div>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                          onClick={(e) => handleDeleteAdviser(adviser, e)}
+                        >
+                          Delete
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -144,6 +111,12 @@ const Advisers = () => {
             </Card>
           ))}
         </div>
+        
+        {filteredAdvisers.length === 0 && (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">No advisers found. Try adjusting your search or add a new adviser.</p>
+          </div>
+        )}
       </div>
     </Layout>
   );
