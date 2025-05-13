@@ -23,7 +23,7 @@ export const Sidebar = ({ onClose }: SidebarProps) => {
         )}
       </div>
       
-      <nav className="flex-1 p-4">
+      <nav className="flex-1 p-4 overflow-y-auto">
         <ul className="space-y-2">
           <li>
             <NavLink 
@@ -35,6 +35,7 @@ export const Sidebar = ({ onClose }: SidebarProps) => {
                     : 'hover:bg-sidebar-accent/50'
                 }`
               }
+              onClick={() => isMobile && onClose()}
             >
               <BarChart className="mr-3 h-5 w-5" />
               Dashboard
@@ -50,6 +51,7 @@ export const Sidebar = ({ onClose }: SidebarProps) => {
                     : 'hover:bg-sidebar-accent/50'
                 }`
               }
+              onClick={() => isMobile && onClose()}
             >
               <Users className="mr-3 h-5 w-5" />
               Advisers
@@ -65,6 +67,7 @@ export const Sidebar = ({ onClose }: SidebarProps) => {
                     : 'hover:bg-sidebar-accent/50'
                 }`
               }
+              onClick={() => isMobile && onClose()}
             >
               <FileText className="mr-3 h-5 w-5" />
               Policies
@@ -80,6 +83,7 @@ export const Sidebar = ({ onClose }: SidebarProps) => {
                     : 'hover:bg-sidebar-accent/50'
                 }`
               }
+              onClick={() => isMobile && onClose()}
             >
               <UserPlus className="mr-3 h-5 w-5" />
               Add Adviser
@@ -95,6 +99,7 @@ export const Sidebar = ({ onClose }: SidebarProps) => {
                     : 'hover:bg-sidebar-accent/50'
                 }`
               }
+              onClick={() => isMobile && onClose()}
             >
               <FilePlus className="mr-3 h-5 w-5" />
               Add Policy
@@ -117,3 +122,4 @@ export const Sidebar = ({ onClose }: SidebarProps) => {
     </aside>
   );
 };
+
