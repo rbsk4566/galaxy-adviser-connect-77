@@ -15,42 +15,71 @@ const Index = () => {
   const [topAdvisers, setTopAdvisers] = React.useState<any[]>([]);
   
   useEffect(() => {
-    // Generate monthly performance data
+    // Generate monthly performance data from actual policies
     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const currentMonth = new Date().getMonth();
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
+    
+    // Calculate policies per month for the last 6 months
     const last6Months = Array.from({ length: 6 }, (_, i) => {
-      const month = (currentMonth - i + 12) % 12;
+      const monthIndex = (currentDate.getMonth() - i + 12) % 12;
+      const year = currentDate.getMonth() - i < 0 ? currentYear - 1 : currentYear;
+      const month = monthNames[monthIndex];
+      
+      // Count policies that started in this month/year
+      const policiesInMonth = policies.filter(policy => {
+        const startDate = new Date(policy.startDate);
+        return startDate.getMonth() === monthIndex && startDate.getFullYear() === year;
+      });
+      
       return {
-        name: monthNames[month],
-        value: Math.floor(Math.random() * 30) + 60 // Random value between 60-90 for demo
+        name: month,
+        value: policiesInMonth.length,
+        premium: policiesInMonth.reduce((sum, policy) => sum + policy.premium, 0)
       };
     }).reverse();
     
     setPerformanceData(last6Months);
     
-    // Calculate top advisers
-    const adviserPolicyCounts: Record<number, { id: number, name: string, policies: number, target: number }> = {};
+    // Calculate top advisers based on number of policies and premium
+    const adviserPerformance: Record<number, { 
+      id: number, 
+      name: string, 
+      policies: number, 
+      premium: number,
+      target: number 
+    }> = {};
     
+    // Count policies for each adviser
     policies.forEach(policy => {
-      if (!adviserPolicyCounts[policy.adviserId]) {
+      if (!adviserPerformance[policy.adviserId]) {
         const adviser = advisers.find(a => a.id === policy.adviserId);
         if (adviser) {
-          adviserPolicyCounts[policy.adviserId] = {
+          adviserPerformance[policy.adviserId] = {
             id: adviser.id,
             name: adviser.name,
             policies: 0,
-            target: Math.floor(Math.random() * 10) + 20 // Random target between 20-30 for demo
+            premium: 0,
+            // Set a target based on their current policy count + 30%
+            target: 0
           };
         }
       }
       
-      if (adviserPolicyCounts[policy.adviserId]) {
-        adviserPolicyCounts[policy.adviserId].policies += 1;
+      if (adviserPerformance[policy.adviserId]) {
+        adviserPerformance[policy.adviserId].policies += 1;
+        adviserPerformance[policy.adviserId].premium += policy.premium;
       }
     });
     
-    const topAdvisersList = Object.values(adviserPolicyCounts)
-      .sort((a, b) => b.policies - a.policies)
+    // Set realistic targets based on performance (current policies + 30%)
+    Object.values(adviserPerformance).forEach(adviser => {
+      adviser.target = Math.max(5, Math.ceil(adviser.policies * 1.3));
+    });
+    
+    // Sort by premium amount and get top 3
+    const topAdvisersList = Object.values(adviserPerformance)
+      .sort((a, b) => b.premium - a.premium)
       .slice(0, 3);
     
     setTopAdvisers(topAdvisersList);
@@ -59,8 +88,15 @@ const Index = () => {
   // Calculate total active policies
   const activePolicies = policies.filter(p => p.status === 'active').length;
   
-  // Calculate quarterly target (for demo purposes, assuming a target of 30 policies per quarter)
-  const quarterlyTarget = 30;
+  // Calculate quarterly target based on last quarter performance + 20%
+  const lastQuarterPolicies = policies.filter(p => {
+    const startDate = new Date(p.startDate);
+    const threeMonthsAgo = new Date();
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+    return startDate >= threeMonthsAgo;
+  }).length;
+  
+  const quarterlyTarget = Math.max(10, Math.ceil(lastQuarterPolicies * 1.2));
   const quarterlyProgress = Math.min(Math.round((activePolicies / quarterlyTarget) * 100), 100);
   
   return (
@@ -110,10 +146,10 @@ const Index = () => {
           </Card>
         </div>
 
-        {/* Performance chart */}
+        {/* Performance chart - now showing real data */}
         <Card className="shadow-sm animate-enter" style={{ animationDelay: "0.3s" }}>
           <CardHeader>
-            <CardTitle>Monthly Performance</CardTitle>
+            <CardTitle>Monthly Policy Performance</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-[250px] w-full">
@@ -122,15 +158,17 @@ const Index = () => {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="name" />
                   <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="value" fill="#0047AB" />
+                  <Tooltip formatter={(value, name) => {
+                    return name === 'value' ? [`${value} policies`, 'Policies'] : [`₹${value.toLocaleString()}`, 'Premium'];
+                  }} />
+                  <Bar dataKey="value" name="Policies" fill="#0047AB" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </CardContent>
         </Card>
 
-        {/* Top Advisers */}
+        {/* Top Advisers - now based on real performance */}
         <Card className="shadow-sm animate-enter" style={{ animationDelay: "0.4s" }}>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Top Performing Advisers</CardTitle>
@@ -148,7 +186,7 @@ const Index = () => {
                   <div>
                     <p className="font-medium">{adviser.name}</p>
                     <p className="text-sm text-muted-foreground">
-                      {adviser.policies} policies (Target: {adviser.target})
+                      {adviser.policies} policies (₹{adviser.premium.toLocaleString()} premium)
                     </p>
                   </div>
                   <Progress 
